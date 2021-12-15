@@ -8,5 +8,5 @@ setup(
         include_package_data=True,    # include everything in source control
         # ...but exclude README.txt from all packages
         packages=find_packages(),
-        install_requires=["pyyaml"],
+        install_requires=["pyyaml", "pytest"],
 )

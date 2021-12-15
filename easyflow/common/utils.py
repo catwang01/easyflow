@@ -1,9 +1,11 @@
 from typing import Callable, List, Optional
-from multiprocessing import Pool
+from platform import system
+from multiprocessing.pool import Pool
+import multiprocessing
 
 def multiprocessingRun(func: Callable, argsList: List, pool: Optional[Pool]=None, wait: bool=False):
     if pool is None:
-        pool = Pool()
+        pool = multiprocessing.Pool()
     results = []
     for args in argsList:
         if not isinstance(args, list):
@@ -16,3 +18,6 @@ def multiprocessingRun(func: Callable, argsList: List, pool: Optional[Pool]=None
         pool.join()
         results = [result.get() for result in results]
     return results
+
+def platform() -> str:
+    return system()

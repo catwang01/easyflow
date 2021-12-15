@@ -1,8 +1,10 @@
 import sys
+import platform
 import json
 import os
 from easyflow.resolver import JsonResolver
 thisDir = os.path.dirname(__file__)
+os.chdir(thisDir)
 import glob
 from test.utils import assertFile, rmFiles
 
@@ -15,5 +17,7 @@ class TestResolver:
         resolver = JsonResolver()
         workflow = resolver.resolve(wdef)
         workflow.run()
-        assertFile('output5.txt', "output2 \noutput1  \noutput1  \n")
-        
+        if platform.system() == 'Darwin':
+            assertFile("output5.txt", "output2\noutput1\noutput1\n")
+        else:
+            assertFile('output5.txt', "output2 \noutput1  \noutput1  \n")

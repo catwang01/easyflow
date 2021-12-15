@@ -8,7 +8,8 @@ class Resolver:
     
 class JsonResolver(Resolver):
 
-    def resolve(self, json: Dict, *args, **kwargs) -> Workflow:
+    def resolve(self, *args, **kwargs) -> Workflow:
+        json = kwargs.get('json', {})
         datas: Dict[str, TData] = {}
         for name, dataArgs in json['datas'].items():
             if 'type' in dataArgs:
