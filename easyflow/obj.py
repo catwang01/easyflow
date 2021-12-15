@@ -1,30 +1,27 @@
+from __future__ import annotations
+
 import os
 from time import sleep
-from typing import TypeVar, List, Optional, Generic, Callable, Union, ClassVar, Dict, Type, Optional, Iterable
+from typing import List, Optional, Union, ClassVar, Dict, Type, Optional, Iterable
 from queue import Queue
 
-from threading import Thread
 from easyflow.common.logger import setupLogger
-from easyflow.common.utils import multiprocessingRun
 import threading
-
-TData = TypeVar('TData', bound="Data")
-TProcessor = TypeVar('TProcessor', bound="Processor")
 
 logger = setupLogger(__name__)
 
-class ProcessorFactory(Generic[TProcessor]):
+class ProcessorFactory:
 
-    processorDict: Dict[str, TProcessor] = {}
+    processorDict: Dict[str, Type[Processor]] = {}
 
     @classmethod
-    def getProcessor(cls: Type['ProcessorFactory'], processorType: str) -> TProcessor:
+    def getProcessor(cls: Type['ProcessorFactory'], processorType: str) -> Type[Processor]:
         if processorType in cls.processorDict:
             return cls.processorDict[processorType]
         raise Exception()
 
     @classmethod
-    def register(cls, class_: Type[TProcessor]) -> Type[TProcessor]:
+    def register(cls, class_: Type[Processor]) -> Type[Processor]:
         cls.processorDict[class_.type] = class_
         return class_
 
@@ -61,19 +58,19 @@ class CommandProcessor(Processor):
         os.system(self.command)
 
 
-class Module(Generic[TData]):
+class Module:
 
     def __init__(self, name: str,
-                 processor: TProcessor,
-                 inputs: Optional[List[TData]] = None,
-                 outputs: Optional[List[TData]] = None,
+                 processor: Processor,
+                 inputs: Optional[List[Data]] = None,
+                 outputs: Optional[List[Data]] = None,
                  checkInterval: int = 10) -> None:
         self.name = name
-        self.inputs: List[TData] = []
+        self.inputs: List[Data] = []
         if inputs:
             for inputNode in inputs:
                 self.addInput(inputNode)
-        self.outputs: List[TData] = []
+        self.outputs: List[Data] = []
         if outputs:
             for outputNode in outputs:
                 self.addOutput(outputNode)
@@ -82,18 +79,18 @@ class Module(Generic[TData]):
         # To avoid this module ran by multiple inputNode.
         self.running = False
 
-    def addInput(self, inputNode: TData) -> None:
+    def addInput(self, inputNode: Data) -> None:
         self.inputs.append(inputNode)
         inputNode.addDownStream(self)
 
-    def addOutput(self, outputNode: TData) -> None:
+    def addOutput(self, outputNode: Data) -> None:
         self.outputs.append(outputNode)
 
     def setWorkflow(self, workflow) -> None:
         self.workflow = workflow
 
     def _run(self, reportError: bool = False, *args, **kwargs) -> int:
-        notExists: List[TData] = []
+        notExists: List[Data] = []
         for inputNode in self.inputs:
             if not inputNode.checkExists():
                 notExists.append(inputNode)
@@ -125,18 +122,18 @@ class Module(Generic[TData]):
         return errorCode
 
 
-class DataFactory(Generic[TData]):
+class DataFactory:
 
-    dataTypes: ClassVar[Dict[str, TData]] = {}
+    dataTypes: ClassVar[Dict[str, Type[Data]]] = {}
 
     @classmethod
-    def getData(cls, dataNodeType: str) -> TData:
+    def getData(cls, dataNodeType: str) -> Type[Data]:
         if dataNodeType in cls.dataTypes:
             return cls.dataTypes[dataNodeType]
         raise Exception(f"No such dataNodeType: {dataNodeType}")
     
     @classmethod
-    def register(cls, dataClass: Type[TData]) -> Type[TData]:
+    def register(cls, dataClass: Type[Data]) -> Type[Data]:
         cls.dataTypes[dataClass.type] = dataClass
         return dataClass
 
@@ -170,12 +167,12 @@ class NormalFileData(Data):
 def func(node, pool):
     node.run(pool=pool)
 
-class Workflow(Generic[TData, TProcessor]):
+class Workflow:
 
     def __init__(self, 
                     modules: Optional[Dict[str, Module]]=None,
-                    datas: Optional[Dict[str, TData]]=None,
-                    processors: Optional[Dict[str, TProcessor]]=None,
+                    datas: Optional[Dict[str, Data]]=None,
+                    processors: Optional[Dict[str, Processor]]=None,
                     startNodes: Optional[List[Module]]=None) -> None:
         super().__init__()
         self.modules: Dict[str, Module] = {}
@@ -183,22 +180,22 @@ class Workflow(Generic[TData, TProcessor]):
         if modules:
             for node in modules.values():
                 self.addNode(node)
-        self.datas: Dict[str, TData] = {} if not datas else datas
+        self.datas: Dict[str, Data] = {} if not datas else datas
         self.startNodes: List[Module] = [] if not startNodes else startNodes
-        self.processors: Dict[str, TProcessor] = {} if not processors else processors
-        self.queue = Queue()
+        self.processors: Dict[str, Processor] = {} if not processors else processors
+        self.queue = Queue() # type:ignore
 
     def setStartNode(self, moduleNode: Module) -> None:
         self.startNodes.append(moduleNode)
-    
-    def addNode(self, node: Union[Module, TData]) -> None:
+
+    def addNode(self, node: Union[Module, Data]) -> None:
         if isinstance(node, Data):
             self.datas[node.name] = node
         if isinstance(node, Module):
             self.modules[node.name] = node
             node.setWorkflow(self)
     
-    def addNodes(self, nodes: Iterable[Union[Module, TData]]) -> None:
+    def addNodes(self, nodes: Iterable[Union[Module, Data]]) -> None:
         for node in nodes:
             self.addNode(node)
 
@@ -222,7 +219,7 @@ class Workflow(Generic[TData, TProcessor]):
 
 class Worker(threading.Thread):
 
-    def __init__(self, i: int, workflow: 'Workflow'):
+    def __init__(self, i: int, workflow: Workflow):
         super().__init__()
         self.i = i
         self.workflow = workflow
