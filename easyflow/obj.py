@@ -1,11 +1,13 @@
 from __future__ import annotations
+import logging
 
 import os
 from time import sleep
 from typing import List, Optional, Union, ClassVar, Dict, Type, Optional, Iterable
-from queue import Queue
+from queue import Queue, Empty
 
 from easyflow.common.logger import setupLogger
+from easyflow.common.utils import Timer
 import threading
 
 logger = setupLogger(__name__)
@@ -203,19 +205,27 @@ class Workflow:
         self.queue.put((lambda node: node.run(), (node,), {}))
 
     def run(self, *args, **kwargs) -> None:
-        workers = []
-        for i in range(10):
-            worker = Worker(i, self)
-            workers.append(worker)
-            worker.start()
+        logger.info("Workflow start!")
 
-        for node in self.startNodes:
-            self.addNodeToQueue(node)
+        class Logger:
+            def write(self, messages: str):
+                for mess in messages.strip('\n').split('\n'):
+                    logger.info(mess)
 
-        for worker in workers:
-            worker.join()
-        logger.info("Workflow finished!")
-        
+        with Timer(stdout=Logger()):
+            workers = []
+            for i in range(10):
+                worker = Worker(i, self)
+                workers.append(worker)
+                worker.start()
+            logger.debug("All workers started!")
+
+            for node in self.startNodes:
+                self.addNodeToQueue(node)
+
+            for worker in workers:
+                worker.join()
+            logger.info("Workflow finished!")
 
 class Worker(threading.Thread):
 
@@ -223,20 +233,37 @@ class Worker(threading.Thread):
         super().__init__()
         self.i = i
         self.workflow = workflow
+        self.nFinished = 0
+
+    def log(self, message, severity=logging.INFO):
+        if severity == logging.INFO:
+            logger.info(f"[Worker{self.i}]{message}")
+        else:
+            logger.debug(f"[Worker{self.i}]{message}")
+    
+    def debug(self, message):
+        self.log(message, severity=logging.DEBUG)
 
     def run(self):
-        logger.debug(f"worker: {self.i} start to work")
+        self.debug(f"Starts to work")
         while self.workflow.nFinished != len(self.workflow.modules):
             if self.workflow.nFinished == len(self.workflow.modules):
-                logger.info("All job finished!")
+                self.log(f"[{self.nFinished}/{self.workflow.nFinished}] jobs are finished!")
                 break
             try:
-                func, args, kwargs = self.workflow.queue.get(timeout=5)
-            except Exception:
+                with Timer(descStart="Job start to run!", descEnd="Job end to run!") as timeUsed:
+                    func, args, kwargs = self.workflow.queue.get(timeout=5)
+                    self.debug(f"func:{func}\nargs: {args}\nkwargs: {kwargs}")
+                self.debug(f"Time used: {timeUsed}")
+            except Empty:
+                self.debug("Wait to get job")
                 continue
+            except Exception as e:
+                raise Exception(f'[Worker{self.i}]Bad execution: %s' % str(e))
             try:
                 func(*args,**kwargs)
             except Exception as e:
-                raise Exception('bad execution: %s' % str(e))
+                raise Exception(f'[Worker{self.i}]Bad execution: %s' % str(e))
             else:
                 self.workflow.nFinished += 1
+                self.nFinished += 1

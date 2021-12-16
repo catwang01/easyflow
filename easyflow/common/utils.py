@@ -1,3 +1,5 @@
+import time
+import sys
 from typing import Callable, List, Optional
 from platform import system
 from multiprocessing.pool import Pool
@@ -21,3 +23,36 @@ def multiprocessingRun(func: Callable, argsList: List, pool: Optional[Pool]=None
 
 def platform() -> str:
     return system()
+
+class Timer:
+
+    def __init__(self, descStart="Timer start!", descEnd="Timer end!", verbose=True, stdout=sys.stdout):
+        self.descStart = descStart
+        self.descEnd = descEnd
+        self.stdout = stdout
+        self.verbose = verbose
+        self.clock = self.Clock()
+
+    def __enter__(self):
+        if self.verbose:
+            self.stdout.write(f"{self.descStart}\n")
+        self.clock.setStartTime(time.time())
+        return self.clock
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.clock.setEndTime(time.time())
+        if self.verbose:
+            self.stdout.write(f"{self.descEnd}\n")
+
+    class Clock:
+        def __init__(self) -> None:
+            self.startTime = 0
+            self.endTime = 0
+        
+        def setStartTime(self, startTime):
+            self.startTime = startTime
+
+        def setEndTime(self, endTime):
+            self.endTime = endTime
+
+        

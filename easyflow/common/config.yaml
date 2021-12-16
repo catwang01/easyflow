@@ -35,4 +35,4 @@ loggers:
     handlers: [simple_console, file, error]
 root:
   level: DEBUG
-  handlers: [brief_console]
+  handlers: [simple_console, file, error]
