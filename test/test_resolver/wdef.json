@@ -1,0 +1,31 @@
+{
+    "modules": {
+        "a": {
+            "outputs": ["output1", "output2"],
+            "processor": "processora"
+        },
+        "b": {
+            "inputs": ["output1"],
+            "outputs": ["output3", "output4"],
+            "processor": "processorb"
+        },
+        "c": {
+            "inputs": ["output2", "output3", "output4"],
+            "outputs": ["output5"],
+            "processor": "processorc"
+        }
+    },
+    "datas": {
+        "output1": {"type": "NormalFileData", "path": "output1.txt"},
+        "output2": {"type": "NormalFileData", "path": "output2.txt"},
+        "output3": {"type": "NormalFileData", "path": "output3.txt"},
+        "output4": {"type": "NormalFileData", "path": "output4.txt"},
+        "output5": {"type": "NormalFileData", "path": "output5.txt"}
+    },
+    "processors": {
+        "processora": {"type": "CommandProcessor", "command": ["echo output1 > output1.txt && echo output2 > output2.txt"]},
+        "processorb": {"type": "CommandProcessor", "command": ["cat output1.txt > output3.txt", "cat output1.txt > output4.txt"]},
+        "processorc": {"type": "CommandProcessor", "command": ["cat output2.txt >> output5.txt", "cat output3.txt >> output5.txt", "cat output4.txt >> output5.txt"]}
+    },
+    "startNodes": ["a"]
+}

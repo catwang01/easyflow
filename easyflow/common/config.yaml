@@ -1,0 +1,38 @@
+# config.yam
+version: 1
+formatters:
+  brief:
+    format: "%(asctime)s - %(message)s"
+  simple:
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+handlers:
+  brief_console:
+    class : logging.StreamHandler
+    formatter: brief
+    level   : INFO
+    stream  : ext://sys.stdout
+  simple_console:
+    class : logging.StreamHandler
+    formatter: simple
+    level   : INFO
+    stream  : ext://sys.stdout
+  file:
+    class : logging.FileHandler
+    formatter: simple
+    level: DEBUG
+    filename: debug.log
+  error:
+    class: logging.handlers.RotatingFileHandler
+    level: ERROR
+    formatter: simple
+    filename: error.log
+    maxBytes: 10485760
+    backupCount: 20
+    encoding: utf8
+loggers:
+  core:
+    level: DEBUG
+    handlers: [simple_console, file, error]
+root:
+  level: DEBUG
+  handlers: [brief_console]
